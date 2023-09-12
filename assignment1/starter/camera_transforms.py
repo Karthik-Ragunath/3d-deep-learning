@@ -11,6 +11,7 @@ import numpy as np
 
 from starter.utils import get_device, get_mesh_renderer
 from pytorch3d.renderer.cameras import look_at_view_transform
+import os
 
 def render_cow(
     cow_path="data/cow_with_axis.obj",
@@ -43,26 +44,32 @@ def render_cow_360(
     R_relative=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
     T_relative=[0, 0, 0],
     device=None,
+    output_dir=''
 ):
     if device is None:
         device = get_device()
     meshes = pytorch3d.io.load_objs_as_meshes([cow_path]).to(device)
-    azimuth_angle = torch.linspace(start = 0 , end = 360 , steps = 100)
-    R, T = look_at_view_transform(dist=5, elev=30, azim=azimuth_angle)
-    renderer = get_mesh_renderer(image_size=image_size)
-    cameras = pytorch3d.renderer.FoVPerspectiveCameras(
-        R=R, T=T, device=device,
-    )
-    lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -3.0]], device=device,)
-    rend = renderer(meshes, cameras=cameras, lights=lights)
-    return rend[0, ..., :3].cpu().numpy()
+    azimuth_angle = 45
+    for azimuth_angle in range(0, 361):
+        R, T = look_at_view_transform(dist=5, elev=30, azim=azimuth_angle)
+        renderer = get_mesh_renderer(image_size=image_size)
+        cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+            R=R, T=T, device=device,
+        )
+        lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -3.0]], device=device,)
+        rend = renderer(meshes, cameras=cameras, lights=lights)
+        output_path = os.path.join(output_dir, f"{azimuth_angle}.jpg")
+        plt.imsave(output_path, rend[0, ..., :3].cpu().numpy())
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--cow_path", type=str, default="data/cow_with_axis.obj")
     parser.add_argument("--image_size", type=int, default=256)
-    parser.add_argument("--output_path", type=str, default="images/transform_cow.jpg")
+    parser.add_argument("--output_path", type=str, default="images/multiview")
     args = parser.parse_args()
 
-    plt.imsave(args.output_path, render_cow(cow_path=args.cow_path, image_size=args.image_size))
+    # plt.imsave(args.output_path, render_cow(cow_path=args.cow_path, image_size=args.image_size))
+    os.makedirs('images/multiview/', exist_ok=True)
+    render_cow_360(cow_path=args.cow_path, image_size=args.image_size, output_dir=args.output_path)
+    print("done")

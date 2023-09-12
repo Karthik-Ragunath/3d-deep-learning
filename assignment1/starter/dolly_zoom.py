@@ -25,17 +25,18 @@ def dolly_zoom(
     if device is None:
         device = get_device()
 
-    mesh = pytorch3d.io.load_objs_as_meshes(["cow_on_plane/cow_on_plane.obj"])
+    mesh = pytorch3d.io.load_objs_as_meshes(["data/cow_on_plane.obj"])
     mesh = mesh.to(device)
     renderer = get_mesh_renderer(image_size=image_size, device=device)
     lights = pytorch3d.renderer.PointLights(location=[[0.0, 0.0, -3.0]], device=device)
 
     fovs = torch.linspace(5, 120, num_frames)
-
+    # fovs = torch.flip(fovs, dims=(0,))
     renders = []
     for fov in tqdm(fovs):
-        distance = 3  # TODO: change this.
-        T = [[0, 0, 3]]  # TODO: Change this.
+        distance = 5 / (2 * np.tan(np.radians(fov) / 2))
+        # print("distance", distance)
+        T = [[0, 0, distance]]
         cameras = pytorch3d.renderer.FoVPerspectiveCameras(fov=fov, T=T, device=device)
         rend = renderer(mesh, cameras=cameras, lights=lights)
         rend = rend[0, ..., :3].cpu().numpy()  # (N, H, W, 3)
@@ -47,7 +48,9 @@ def dolly_zoom(
         draw = ImageDraw.Draw(image)
         draw.text((20, 20), f"fov: {fovs[i]:.2f}", fill=(255, 0, 0))
         images.append(np.array(image))
-    imageio.mimsave(output_file, images, fps=(num_frames / duration))
+    # imageio.mimsave(output_file, images, fps=(num_frames / duration))
+    imageio.mimsave(output_file, images, duration=3) # duration in seconds # The keyword `fps` is no longer supported. Use `duration`(in ms) instead, e.g. `fps=50` == `duration=20` (1000 * 1/50)
+
 
 
 if __name__ == "__main__":
