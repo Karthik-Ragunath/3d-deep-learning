@@ -10,7 +10,7 @@ import torch
 import numpy as np
 
 from starter.utils import get_device, get_mesh_renderer
-
+from pytorch3d.renderer.cameras import look_at_view_transform
 
 def render_cow(
     cow_path="data/cow_with_axis.obj",
@@ -32,6 +32,26 @@ def render_cow(
     renderer = get_mesh_renderer(image_size=image_size)
     cameras = pytorch3d.renderer.FoVPerspectiveCameras(
         R=R.t().unsqueeze(0), T=T.unsqueeze(0), device=device,
+    )
+    lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -3.0]], device=device,)
+    rend = renderer(meshes, cameras=cameras, lights=lights)
+    return rend[0, ..., :3].cpu().numpy()
+
+def render_cow_360(
+    cow_path="data/cow_with_axis.obj",
+    image_size=256,
+    R_relative=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    T_relative=[0, 0, 0],
+    device=None,
+):
+    if device is None:
+        device = get_device()
+    meshes = pytorch3d.io.load_objs_as_meshes([cow_path]).to(device)
+    azimuth_angle = torch.linspace(start = 0 , end = 360 , steps = 100)
+    R, T = look_at_view_transform(dist=5, elev=30, azim=azimuth_angle)
+    renderer = get_mesh_renderer(image_size=image_size)
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+        R=R, T=T, device=device,
     )
     lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -3.0]], device=device,)
     rend = renderer(meshes, cameras=cameras, lights=lights)
