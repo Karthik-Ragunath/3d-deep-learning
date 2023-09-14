@@ -4,8 +4,9 @@ import numpy as np
 import os
 from PIL import Image
 
-from pytorch3d.renderer import OpenGLPerspectiveCameras, look_at_view_transform
+from pytorch3d.renderer import OpenGLPerspectiveCameras, look_at_view_transform, FoVPerspectiveCameras
 from pytorch3d.renderer.mesh import TexturesUV, TexturesVertex
+from pytorch3d.renderer.mesh.textures import Textures
 from pytorch3d.utils import ico_sphere
 from pytorch3d.renderer import HardPhongShader
 from pytorch3d.io import save_obj
@@ -37,18 +38,23 @@ uv_coords = torch.tensor([
 
 # Create a TexturesUV object from the UV coordinates
 # textures = TexturesUV(uvs=[uv_coords])
-texture_image = torch.ones((1, vertices.shape[0], 3), dtype=torch.float32).to(vertices.device)
-texture = TexturesVertex(verts_features=texture_image)
+
+# texture_image = torch.ones((1, vertices.shape[0], 3), dtype=torch.float32).to(vertices.device)
+# texture = TexturesVertex(verts_features=texture_image)
+
+texture_image = torch.zeros((1, vertices.shape[0], 3), dtype=torch.float32).to(vertices.device)
+texture_image[:,:,0] = 1.0
+texture = Textures(verts_rgb=texture_image)
 
 # Create a Meshes object from the vertices and faces
 mesh = pytorch3d.structures.Meshes(verts=[vertices], faces=[faces], textures=texture)
 
 # Create a camera and renderer
 R, T = look_at_view_transform(2.7, 90, 60, device=vertices.device)
-cameras = OpenGLPerspectiveCameras(device=vertices.device, R=R, T=T)
+cameras = FoVPerspectiveCameras(device=vertices.device, R=R, T=T)
 renderer = pytorch3d.renderer.MeshRenderer(
     rasterizer=pytorch3d.renderer.MeshRasterizer(cameras=cameras),
-    shader=pytorch3d.renderer.HardPhongShader(device=vertices.device, lights=None),
+    shader=pytorch3d.renderer.SoftPhongShader(device=vertices.device, lights=None),
 )
 
 # Place a point light in front of the cow.
