@@ -12,6 +12,8 @@ import numpy as np
 from starter.utils import get_device, get_mesh_renderer
 from pytorch3d.renderer.cameras import look_at_view_transform
 import os
+from pytorch3d.renderer.mesh.textures import Textures
+from pytorch3d.renderer.mesh import TexturesVertex
 
 def render_cow(
     cow_path="data/cow_with_axis.obj",
@@ -61,6 +63,38 @@ def render_cow_360(
         output_path = os.path.join(output_dir, f"{azimuth_angle}.jpg")
         plt.imsave(output_path, rend[0, ..., :3].cpu().numpy())
 
+def render_cow_360_texture_modified(
+    cow_path="data/cow_with_axis.obj",
+    image_size=256,
+    R_relative=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    T_relative=[0, 0, 0],
+    device=None,
+    output_dir=''
+):
+    if device is None:
+        device = get_device()
+    meshes = pytorch3d.io.load_objs_as_meshes([cow_path]).to(device)
+    color_1 = torch.tensor([0, 0, 1]).to(device)
+    color_2 = torch.tensor([1, 0, 0]).to(device)
+    vertices = meshes.verts_list()[0]
+    z_min = torch.min(vertices[:, 2])
+    z_max = torch.max(vertices[:, 2])
+    alpha = (vertices[:, 2] - z_min) / (z_max - z_min)
+    colors = alpha.view(-1, 1) * color_1.view(1, 3) + (1 - alpha.view(-1, 1)) * color_2.view(1, 3)
+    textures = TexturesVertex(verts_features=colors.unsqueeze(0))
+    azimuth_angle = 45
+    meshes.textures = textures
+    for azimuth_angle in range(0, 361):
+        R, T = look_at_view_transform(dist=5, elev=30, azim=azimuth_angle)
+        renderer = get_mesh_renderer(image_size=image_size)
+        cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+            R=R, T=T, device=device,
+        )
+        lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -3.0]], device=device,)
+        rend = renderer(meshes, cameras=cameras, lights=lights)
+        output_path = os.path.join(output_dir, f"{azimuth_angle}.jpg")
+        plt.imsave(output_path, rend[0, ..., :3].cpu().numpy())
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -71,5 +105,5 @@ if __name__ == "__main__":
 
     # plt.imsave(args.output_path, render_cow(cow_path=args.cow_path, image_size=args.image_size))
     os.makedirs('images/multiview/', exist_ok=True)
-    render_cow_360(cow_path=args.cow_path, image_size=args.image_size, output_dir=args.output_path)
+    render_cow_360_texture_modified(cow_path=args.cow_path, image_size=args.image_size, output_dir=args.output_path)
     print("done")
