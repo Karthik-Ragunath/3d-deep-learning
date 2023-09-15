@@ -8,13 +8,14 @@ import matplotlib.pyplot as plt
 import pytorch3d
 import torch
 import numpy as np
-
+from pytorch3d.structures import Meshes
 from starter.utils import get_device, get_mesh_renderer
 from pytorch3d.renderer.cameras import look_at_view_transform
 import os
 from pytorch3d.renderer.mesh.textures import Textures
 from pytorch3d.renderer.mesh import TexturesVertex
 from pytorch3d.transforms import RotateAxisAngle
+from pytorch3d.io import load_objs_as_meshes, load_obj
 
 def render_cow(
     cow_path="data/cow_with_axis.obj",
@@ -26,7 +27,6 @@ def render_cow(
     if device is None:
         device = get_device()
     meshes = pytorch3d.io.load_objs_as_meshes([cow_path]).to(device)
-
     R_relative = torch.tensor(R_relative).float()
     T_relative = torch.tensor(T_relative).float()
     R = R_relative @ torch.tensor([[1.0, 0, 0], [0, 1, 0], [0, 0, 1]])
@@ -47,27 +47,40 @@ def render_cow_multi_camera_views(
     R_relative=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
     T_relative=[0, 0, 0],
     device=None,
-    angle=0
+    angle=0,
+    axis="X"
 ):
     if device is None:
         device = get_device()
     meshes = pytorch3d.io.load_objs_as_meshes([cow_path]).to(device)
+    verts, faces, aux = load_obj(cow_path)
+    faces_idx = faces.verts_idx.to(device)
     angle = torch.tensor(angle)
-    # R_relative = torch.tensor(R_relative).float()
-    T_relative = torch.tensor(T_relative).float()
-    homogeneous_matrix = RotateAxisAngle(angle, axis='Z', degrees=True).get_matrix()
+    
+    '''
+    homogeneous_matrix = RotateAxisAngle(angle, axis=axis, degrees=True).get_matrix()
     R_relative = homogeneous_matrix[:, :3, :3]
     R_relative = R_relative.squeeze(0)
     T_relative = homogeneous_matrix[:, :3, 3].squeeze(0)
     R = R_relative @ torch.tensor([[1.0, 0, 0], [0, 1.0, 0], [0, 0, 1.0]])
     T = R_relative @ torch.tensor([0.0, 0.0, 3.0]) + T_relative
+    '''
+    
+    homogeneous_matrix = RotateAxisAngle(angle, axis=axis, degrees=True, device=device)
+    verts = homogeneous_matrix.transform_points(meshes.verts_list()[0])
+    meshes = Meshes(verts=[verts], faces=[faces_idx], textures=meshes.textures)
+    R_relative = torch.tensor(R_relative).float()
+    T_relative = torch.tensor(T_relative).float()
+    R = R_relative @ torch.tensor([[1.0, 0, 0], [0, 1, 0], [0, 0, 1]])
+    T = R_relative @ torch.tensor([0.0, 0, 3]) + T_relative
+
     # since the pytorch3d internal uses Point= point@R+t instead of using Point=R @ point+t,
     # we need to add R.t() to compensate that.
     renderer = get_mesh_renderer(image_size=image_size)
     cameras = pytorch3d.renderer.FoVPerspectiveCameras(
         R=R.t().unsqueeze(0), T=T.unsqueeze(0), device=device,
     )
-    lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -3.0]], device=device,)
+    lights = pytorch3d.renderer.PointLights(location=[[0.0, 0.0, -3.0]], device=device,)
     rend = renderer(meshes, cameras=cameras, lights=lights)
     return rend[0, ..., :3].cpu().numpy()
 
@@ -135,9 +148,10 @@ if __name__ == "__main__":
     parser.add_argument("--camera_transform", action="store_true", required=False)
     args = parser.parse_args()
     os.makedirs(args.output_path, exist_ok=True)
-    angle = 60.0
     if args.camera_transform:
-        plt.imsave(os.path.join(args.output_path, f"{int(angle)}.jpg"), render_cow_multi_camera_views(cow_path=args.cow_path, image_size=args.image_size, angle=angle))
+        angles = [(60.0, "X"), (60.0, "Y"), (90.0, "Z"), (90.0, "Y"), (90.0, "X"), (60.0, "Z"), (270.0, "X"), (270.0, "Y"), (270.0, "Z")]
+        for angle, axis in angles:
+            plt.imsave(os.path.join(args.output_path, f"{int(angle)}_{axis}.jpg"), render_cow_multi_camera_views(cow_path=args.cow_path, image_size=args.image_size, angle=angle, axis=axis))
     else:
         render_cow_360_texture_modified(cow_path=args.cow_path, image_size=args.image_size, output_dir=args.output_path)
         print("done")
