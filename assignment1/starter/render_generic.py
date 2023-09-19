@@ -15,7 +15,7 @@ import numpy as np
 import pytorch3d
 import torch
 
-from starter.utils import get_device, get_mesh_renderer, get_points_renderer
+from starter.utils import get_device, get_mesh_renderer, get_points_renderer, unproject_depth_image
 
 
 def load_rgbd_data(path="data/rgbd_data.pkl"):
@@ -105,6 +105,18 @@ def render_sphere_mesh(image_size=256, voxel_size=64, device=None):
     rend = renderer(mesh, cameras=cameras, lights=lights)
     return rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
 
+def render_rgdb(rgbd_dict: dict):
+    rgb_1 = rgbd_dict.get('rgb1')
+    rgb_2 = rgbd_dict.get('rgb2')
+    mask_1 = rgbd_dict.get('mask1')
+    mask_2 = rgbd_dict.get('mask2')
+    depth_1 = rgbd_dict.get('depth1')
+    depth_2 = rgbd_dict.get('depth2')
+    camera_1 = rgbd_dict.get('cameras1')
+    camera_2 = rgbd_dict.get('cameras2')
+    points_1, rgb_1 = unproject_depth_image(rgb_1, mask_1, depth_1, camera_1)
+    points_2, rgb_2 = unproject_depth_image(rgb_2, mask_2, depth_2, camera_2)
+    return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -112,7 +124,7 @@ if __name__ == "__main__":
         "--render",
         type=str,
         default="point_cloud",
-        choices=["point_cloud", "parametric", "implicit"],
+        choices=["point_cloud", "parametric", "implicit", "check_loaded_data", "render_rgbd"],
     )
     parser.add_argument("--output_path", type=str, default="images/bridge.jpg")
     parser.add_argument("--image_size", type=int, default=256)
@@ -124,6 +136,13 @@ if __name__ == "__main__":
         image = render_sphere(image_size=args.image_size, num_samples=args.num_samples)
     elif args.render == "implicit":
         image = render_sphere_mesh(image_size=args.image_size)
+    elif args.render == "check_loaded_data":
+        rgbd_image_data = load_rgbd_data()
+        exit(0)
+    elif args.render == "render_rgbd":
+        rgbd_image_data = load_rgbd_data()
+        render_rgdb(rgbd_dict=rgbd_image_data)
+        exit(0)
     else:
         raise Exception("Did not understand {}".format(args.render))
     plt.imsave(args.output_path, image)

@@ -97,12 +97,14 @@ def unproject_depth_image(image, mask, depth, camera):
     image_shape = image.shape[0]
     ndc_pixel_coordinates = torch.linspace(1, -1, image_shape)
     Y, X = torch.meshgrid(ndc_pixel_coordinates, ndc_pixel_coordinates)
-    xy_depth = torch.dstack([X, Y, depth])
+    depth_tensor = torch.from_numpy(depth)
+    xy_depth = torch.dstack([X, Y, depth_tensor])
     points = camera.unproject_points(
         xy_depth.to(device), in_ndc=False, from_ndc=False, world_coordinates=True,
     )
     points = points[mask > 0.5]
-    rgb = image[mask > 0.5]
+    image_tensor = torch.from_numpy(image)
+    rgb = image_tensor[mask > 0.5]
     rgb = rgb.to(device)
 
     # For some reason, the Pytorch3D compositor does not apply a background color
