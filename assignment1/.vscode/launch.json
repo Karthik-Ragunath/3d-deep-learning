@@ -1,0 +1,142 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "360_camera_view",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/camera_transforms.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "dolly_zoom",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/dolly_zoom.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "3d_mesh_gen_with_uv_map",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/3d_mesh_generation_with_uv_map.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "3d_mesh_retexturing",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/camera_transforms.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "rotation_camera_view",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/camera_transforms.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--camera_transform",
+                "--output_path", "images/multiview_camera"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "data_crunching",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/data_crunching.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "point_cloud",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/render_generic.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--render",
+                "point_cloud"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "load_point_cloud",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/render_generic.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--render",
+                "check_loaded_data"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "render_rgbd",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/render_generic.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--render",
+                "render_rgbd"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        }
+    ]
+}

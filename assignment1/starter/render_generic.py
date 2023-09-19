@@ -100,7 +100,7 @@ def render_sphere_mesh(image_size=256, voxel_size=64, device=None):
     )
     lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
     renderer = get_mesh_renderer(image_size=image_size, device=device)
-    R, T = pytorch3d.renderer.look_at_view_transform(dist=3, elev=0, azim=180)
+    R, T = pytorch3d.renderer.look_at_view_transform(dist=6, elev=0, azim=180)
     cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
     rend = renderer(mesh, cameras=cameras, lights=lights)
     return rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
@@ -114,9 +114,36 @@ def render_rgdb(rgbd_dict: dict):
     depth_2 = rgbd_dict.get('depth2')
     camera_1 = rgbd_dict.get('cameras1')
     camera_2 = rgbd_dict.get('cameras2')
-    points_1, rgb_1 = unproject_depth_image(rgb_1, mask_1, depth_1, camera_1)
-    points_2, rgb_2 = unproject_depth_image(rgb_2, mask_2, depth_2, camera_2)
-    return
+    image_size = rgb_1.shape[0]
+    points_1, rgb_1_depth = unproject_depth_image(rgb_1, mask_1, depth_1, camera_1)
+    points_2, rgb_2_depth = unproject_depth_image(rgb_2, mask_2, depth_2, camera_2)
+    device = get_device()
+    renderer = get_points_renderer(
+        image_size=image_size, background_color=(1, 1, 1)
+    )
+    verts_1 = points_1.to(device)
+    rgbd_1 = rgb_1_depth.to(device)
+
+    verts_2 = points_2.to(device)
+    rgbd_2 = rgb_2_depth.to(device)
+    
+    R, T = pytorch3d.renderer.look_at_view_transform(dist=6, elev=10, azim=0)
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
+
+    point_cloud_1 = pytorch3d.structures.Pointclouds(points=verts_1.unsqueeze(0), features=rgbd_1.unsqueeze(0))
+    rend_1 = renderer(point_cloud_1, cameras=cameras)
+    rend_1 = rend_1.cpu().numpy()[0, ..., :3]
+    plt.imsave("images/point_cloud_1.jpg", rend_1)
+
+    point_cloud_2 = pytorch3d.structures.Pointclouds(points=verts_2.unsqueeze(0), features=rgbd_2.unsqueeze(0))
+    rend_2 = renderer(point_cloud_2, cameras=cameras)
+    rend_2 = rend_2.cpu().numpy()[0, ..., :3]
+    plt.imsave("images/point_cloud_2.jpg", rend_2)
+
+    point_cloud_3 = pytorch3d.structures.Pointclouds(points=torch.cat((verts_1, verts_2), dim=0).unsqueeze(0), features=torch.cat((rgbd_1, rgbd_2), dim=0).unsqueeze(0))
+    rend_3 = renderer(point_cloud_3, cameras=cameras)
+    rend_3 = rend_3.cpu().numpy()[0, ..., :3]
+    plt.imsave("images/point_cloud_3.jpg", rend_3)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
