@@ -78,6 +78,32 @@ def render_sphere(image_size=256, num_samples=200, device=None):
     rend = renderer(sphere_point_cloud, cameras=cameras)
     return rend[0, ..., :3].cpu().numpy()
 
+def render_torus(image_size=256, num_samples=200, device=None, output_path="images/parametric_torus.jpg"):
+    """Render torus."""
+    if device is None:
+        device = get_device()
+    theta = torch.linspace(0, 2 * np.pi, num_samples) # angle of rotation around central axis
+    phi = torch.linspace(0, 2 * np.pi, num_samples) # angle of rotation within cross section
+    Phi, Theta = torch.meshgrid(phi, theta)
+    # Assuming R=4, r=1
+    R = 1
+    r = 0.5
+    x = (R + r * torch.cos(Theta)) * torch.cos(Phi)
+    y = (R + r * torch.sin(Theta)) * torch.sin(Phi)
+    z = r * torch.sin(Theta)
+    points = torch.stack((x.flatten(), y.flatten(), z.flatten()), dim=1)
+    color = (points - points.min()) / (points.max() - points.min())
+
+    torus_point_cloud = pytorch3d.structures.Pointclouds(
+        points=[points], features=[color],
+    ).to(device)
+
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(T=[[0, 0, 3]], device=device)
+    renderer = get_points_renderer(image_size=image_size, device=device)
+    rend = renderer(torus_point_cloud, cameras=cameras)
+    rend = rend[0, ..., :3].cpu().numpy()
+    plt.imsave(output_path, rend)
+
 
 def render_sphere_mesh(image_size=256, voxel_size=64, device=None):
     if device is None:
@@ -104,6 +130,33 @@ def render_sphere_mesh(image_size=256, voxel_size=64, device=None):
     cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
     rend = renderer(mesh, cameras=cameras, lights=lights)
     return rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
+
+def render_torus_mesh(image_size=256, voxel_size=64, device=None, output_path="images/implicit_torus.jpg"):
+    if device is None:
+        device = get_device()
+    min_value = -1.0
+    max_value = 1.0
+    X, Y, Z = torch.meshgrid([torch.linspace(min_value, max_value, voxel_size)] * 3)
+    voxels = torch.pow((torch.pow((X ** 2 + Y ** 2), 0.5) - 1 ** 2), 2) + Z ** 2 - 0.25 ** 2
+    vertices, faces = mcubes.marching_cubes(mcubes.smooth(voxels), isovalue=0)
+    vertices = torch.tensor(vertices).float()
+    faces = torch.tensor(faces.astype(int))
+    # Vertex coordinates are indexed by array position, so we need to
+    # renormalize the coordinate system.
+    vertices = (vertices / voxel_size) * (max_value - min_value) + min_value
+    textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
+    textures = pytorch3d.renderer.TexturesVertex(vertices.unsqueeze(0))
+
+    mesh = pytorch3d.structures.Meshes([vertices], [faces], textures=textures).to(
+        device
+    )
+    lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
+    renderer = get_mesh_renderer(image_size=image_size, device=device)
+    R, T = pytorch3d.renderer.look_at_view_transform(dist=6, elev=0, azim=180)
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
+    rend = renderer(mesh, cameras=cameras, lights=lights)
+    rend = rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
+    plt.imsave(args.output_path, rend)
 
 def render_rgdb(rgbd_dict: dict):
     rgb_1 = rgbd_dict.get('rgb1')
@@ -151,7 +204,7 @@ if __name__ == "__main__":
         "--render",
         type=str,
         default="point_cloud",
-        choices=["point_cloud", "parametric", "implicit", "check_loaded_data", "render_rgbd"],
+        choices=["point_cloud", "parametric", "implicit", "check_loaded_data", "render_rgbd", "parametric_torus", "implicit_torus"],
     )
     parser.add_argument("--output_path", type=str, default="images/bridge.jpg")
     parser.add_argument("--image_size", type=int, default=256)
@@ -161,8 +214,14 @@ if __name__ == "__main__":
         image = render_bridge(image_size=args.image_size)
     elif args.render == "parametric":
         image = render_sphere(image_size=args.image_size, num_samples=args.num_samples)
+    elif args.render == "parametric_torus":
+        image = render_torus(image_size=args.image_size, num_samples=args.num_samples, output_path=args.output_path)
+        exit(0)
     elif args.render == "implicit":
         image = render_sphere_mesh(image_size=args.image_size)
+    elif args.render == "implicit_torus":
+        render_torus_mesh(image_size=args.image_size, output_path=args.output_path)
+        exit(0)
     elif args.render == "check_loaded_data":
         rgbd_image_data = load_rgbd_data()
         exit(0)

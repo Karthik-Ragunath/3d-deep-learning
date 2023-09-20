@@ -137,6 +137,70 @@
             "env": {
                 "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
             }
+        },
+        {
+            "name": "render_parametric",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/render_generic.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--render", "parametric",
+                "--output_path", "images/parametric_example.jpg"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "render_parametric_torus",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/render_generic.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--render", "parametric_torus",
+                "--output_path", "images/parametric_torus.jpg"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "render_implicit_sphere",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/render_generic.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--render", "implicit",
+                "--output_path", "images/implicit_sphere.jpg"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
+        },
+        {
+            "name": "render_implicit_torus",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/starter/render_generic.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--render", "implicit_torus",
+                "--output_path", "images/implicit_torus.jpg"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment1"
+            }
         }
     ]
 }
