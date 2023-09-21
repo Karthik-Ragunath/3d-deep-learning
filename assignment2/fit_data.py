@@ -87,9 +87,19 @@ def fit_pointcloud(pointclouds_src, pointclouds_tgt, args):
     
     print('Done!')
 
+def render_voxels_tgt(voxels):
+    voxels_forward_passed = voxels.squeeze(0).detach().cpu().numpy()
+    vertices, faces = mcubes.marching_cubes(mcubes.smooth(voxels_forward_passed), isovalue=0)
+    vertices = torch.tensor(vertices).float()
+    faces = torch.tensor(faces.astype(int))
+    return vertices, faces
+
 
 def render_voxels(voxels):
-    vertices, faces = mcubes.marching_cubes(mcubes.smooth(voxels), isovalue=0)
+    # voxels_forward_passed = voxels.squeeze(0).detach().cpu().numpy()
+    voxels_forward_passed = torch.nn.Sigmoid()(voxels)
+    voxels_forward_passed_rounded = torch.round(voxels_forward_passed, decimals=1).squeeze(0).detach().cpu().numpy() # decimal = 0 is safer, we set to 1 just to verify our fit
+    vertices, faces = mcubes.marching_cubes(mcubes.smooth(voxels_forward_passed_rounded), isovalue=0)
     vertices = torch.tensor(vertices).float()
     faces = torch.tensor(faces.astype(int))
     return
@@ -128,7 +138,7 @@ def fit_voxel(voxels_src, voxels_tgt, args):
         loss_vis = loss.item()
 
         print("[%4d/%4d]; ttime: %.0f (%.2f); loss: %.3f" % (step, args.max_iter, total_time,  iter_time, loss_vis))
-    render_voxels(voxels_tgt)
+    render_voxels(voxels_src)
     print('Done!')
 
 

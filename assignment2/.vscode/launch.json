@@ -14,7 +14,7 @@
             "cwd": "${workspaceFolder}",
             "args": [
                 "--type", "vox",
-                "--max_iter", "50000"
+                // "--max_iter", "50000"
             ],
             "env": {
                 "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
