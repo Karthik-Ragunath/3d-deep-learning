@@ -156,7 +156,7 @@ def render_torus_mesh(image_size=256, voxel_size=64, device=None, output_path="i
     cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
     rend = renderer(mesh, cameras=cameras, lights=lights)
     rend = rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
-    plt.imsave(args.output_path, rend)
+    plt.imsave(output_path, rend)
 
 def render_rgdb(rgbd_dict: dict):
     rgb_1 = rgbd_dict.get('rgb1')

@@ -1,0 +1,23 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "fit_voxel",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/fit_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--type", "vox"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
+            }
+        }
+    ]
+}

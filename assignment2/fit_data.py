@@ -10,9 +10,11 @@ from pytorch3d.structures import Meshes
 import dataset_location
 import torch
 
-
-
-
+import matplotlib.pyplot as plt
+import mcubes
+import numpy as np
+import pytorch3d
+import torch
 
 
 def get_args_parser():
@@ -24,7 +26,7 @@ def get_args_parser():
     parser.add_argument('--n_points', default=5000, type=int)
     parser.add_argument('--w_chamfer', default=1.0, type=float)
     parser.add_argument('--w_smooth', default=0.1, type=float)
-    parser.add_argument('--device', default='cuda', type=str) 
+    parser.add_argument('--device', default='cuda:0', type=str)
     return parser
 
 def fit_mesh(mesh_src, mesh_tgt, args):
@@ -86,6 +88,27 @@ def fit_pointcloud(pointclouds_src, pointclouds_tgt, args):
     print('Done!')
 
 
+def render_voxels(voxels):
+    vertices, faces = mcubes.marching_cubes(mcubes.smooth(voxels), isovalue=0)
+    vertices = torch.tensor(vertices).float()
+    faces = torch.tensor(faces.astype(int))
+    return
+    # Vertex coordinates are indexed by array position, so we need to
+    # renormalize the coordinate system.
+    # vertices = (vertices / voxel_size) * (max_value - min_value) + min_value
+    # textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
+    # textures = pytorch3d.renderer.TexturesVertex(vertices.unsqueeze(0))
+
+    # mesh = pytorch3d.structures.Meshes([vertices], [faces], textures=textures).to(
+    #     device
+    # )
+    # lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
+    # renderer = get_mesh_renderer(image_size=image_size, device=device)
+    # R, T = pytorch3d.renderer.look_at_view_transform(dist=6, elev=0, azim=180)
+    # cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
+    # rend = renderer(mesh, cameras=cameras, lights=lights)
+    # return rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
+
 def fit_voxel(voxels_src, voxels_tgt, args):
     start_iter = 0
     start_time = time.time()    
@@ -102,10 +125,10 @@ def fit_voxel(voxels_src, voxels_tgt, args):
         total_time = time.time() - start_time
         iter_time = time.time() - iter_start_time
 
-        loss_vis = loss.cpu().item()
+        loss_vis = loss.item()
 
         print("[%4d/%4d]; ttime: %.0f (%.2f); loss: %.3f" % (step, args.max_iter, total_time,  iter_time, loss_vis))
-    
+    render_voxels(voxels_tgt)
     print('Done!')
 
 
