@@ -24,7 +24,7 @@ def voxel_loss(voxel_src,voxel_tgt):
 
 def chamfer_loss(point_cloud_src,point_cloud_tgt):
 	# point_cloud_src, point_cloud_src: b x n_points x 3  
-	loss_chamfer = chamfer_distance(point_cloud_src, point_cloud_tgt)
+	loss_chamfer, _ = chamfer_distance(point_cloud_src, point_cloud_tgt)
 	# implement chamfer loss from scratch
 	return loss_chamfer
 

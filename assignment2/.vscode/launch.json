@@ -19,6 +19,22 @@
             "env": {
                 "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
             }
+        },
+        {
+            "name": "fit_point_cloud",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/fit_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--type", "point",
+                "--max_iter", "20000"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
+            }
         }
     ]
 }

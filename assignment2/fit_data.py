@@ -15,7 +15,7 @@ import mcubes
 import numpy as np
 import pytorch3d
 import torch
-from utils import get_mesh_renderer
+from utils import get_mesh_renderer, get_points_renderer
 
 
 def get_args_parser():
@@ -66,6 +66,28 @@ def fit_mesh(mesh_src, mesh_tgt, args):
 
     print('Done!')
 
+def render_point_clouds(point_cloud, filename='point_cloud.jpg'):
+    image_size = 512
+    renderer = get_points_renderer(
+        image_size=image_size
+    )
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
+    verts = torch.Tensor(point_cloud)
+    # rgb = torch.Tensor(point_cloud["rgb"][::50]).to(device).unsqueeze(0)
+    # point_cloud = pytorch3d.structures.Pointclouds(points=verts, features=rgb)
+    color = (verts - verts.min()) / (verts.max() - verts.min())
+    point_cloud = pytorch3d.structures.Pointclouds(points=verts, features=color).to(device)
+    R, T = pytorch3d.renderer.look_at_view_transform(4, 10, 0)
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
+    rend = renderer(point_cloud, cameras=cameras)
+    rend = rend[0, ..., :3].detach().cpu().numpy() # (B, H, W, 4) -> (H, W, 3)
+    os.makedirs(args.output_path, exist_ok=True)
+    output_path = os.path.join(args.output_path, filename)
+    plt.imsave(output_path, rend)
+
 
 def fit_pointcloud(pointclouds_src, pointclouds_tgt, args):
     start_iter = 0
@@ -86,7 +108,8 @@ def fit_pointcloud(pointclouds_src, pointclouds_tgt, args):
         loss_vis = loss.cpu().item()
 
         print("[%4d/%4d]; ttime: %.0f (%.2f); loss: %.3f" % (step, args.max_iter, total_time,  iter_time, loss_vis))
-    
+    render_point_clouds(pointclouds_src, filename='point_cloud_source.jpg')
+    render_point_clouds(pointclouds_tgt, filename='point_cloud_target.jpg')
     print('Done!')
 
 def render_voxels_tgt(voxels):
