@@ -15,6 +15,7 @@ import mcubes
 import numpy as np
 import pytorch3d
 import torch
+from utils import get_mesh_renderer
 
 
 def get_args_parser():
@@ -27,6 +28,7 @@ def get_args_parser():
     parser.add_argument('--w_chamfer', default=1.0, type=float)
     parser.add_argument('--w_smooth', default=0.1, type=float)
     parser.add_argument('--device', default='cuda:0', type=str)
+    parser.add_argument('--output_path', default='images', type=str, required=False)
     return parser
 
 def fit_mesh(mesh_src, mesh_tgt, args):
@@ -97,27 +99,36 @@ def render_voxels_tgt(voxels):
 
 def render_voxels(voxels):
     # voxels_forward_passed = voxels.squeeze(0).detach().cpu().numpy()
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
     voxels_forward_passed = torch.nn.Sigmoid()(voxels)
     voxels_forward_passed_rounded = torch.round(voxels_forward_passed, decimals=1).squeeze(0).detach().cpu().numpy() # decimal = 0 is safer, we set to 1 just to verify our fit
     vertices, faces = mcubes.marching_cubes(mcubes.smooth(voxels_forward_passed_rounded), isovalue=0)
     vertices = torch.tensor(vertices).float()
     faces = torch.tensor(faces.astype(int))
-    return
+    voxel_size = voxels_forward_passed_rounded.shape[0]
+    min_value = -1
+    max_value = 1
     # Vertex coordinates are indexed by array position, so we need to
     # renormalize the coordinate system.
-    # vertices = (vertices / voxel_size) * (max_value - min_value) + min_value
-    # textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
-    # textures = pytorch3d.renderer.TexturesVertex(vertices.unsqueeze(0))
+    vertices = (vertices / voxel_size) * (max_value - min_value) + min_value
+    textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
+    textures = pytorch3d.renderer.TexturesVertex(vertices.unsqueeze(0))
 
-    # mesh = pytorch3d.structures.Meshes([vertices], [faces], textures=textures).to(
-    #     device
-    # )
-    # lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
-    # renderer = get_mesh_renderer(image_size=image_size, device=device)
-    # R, T = pytorch3d.renderer.look_at_view_transform(dist=6, elev=0, azim=180)
-    # cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
-    # rend = renderer(mesh, cameras=cameras, lights=lights)
-    # return rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
+    mesh = pytorch3d.structures.Meshes([vertices], [faces], textures=textures).to(
+        device
+    )
+    lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
+    renderer = get_mesh_renderer(image_size=512, device=device)
+    R, T = pytorch3d.renderer.look_at_view_transform(dist=3, elev=120, azim=45)
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
+    rend = renderer(mesh, cameras=cameras, lights=lights)
+    rend = rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
+    os.makedirs(args.output_path, exist_ok=True)
+    output_path = os.path.join(args.output_path, 'voxels_source.jpg')
+    plt.imsave(output_path, rend)
 
 def fit_voxel(voxels_src, voxels_tgt, args):
     start_iter = 0
