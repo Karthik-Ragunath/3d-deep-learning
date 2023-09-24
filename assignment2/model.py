@@ -25,9 +25,7 @@ class SingleViewto3D(nn.Module):
             # Input: b x 512
             # Output: b x args.n_points x 3  
             self.n_point = args.n_points
-            self.decoder = torch.nn.Linear(512, self.n_point * 3)
-            # TODO:
-            # self.decoder =             
+            self.decoder = torch.nn.Linear(512, self.n_point * 3)            
         elif args.type == "mesh":
             # Input: b x 512
             # Output: b x mesh_pred.verts_packed().shape[0] x 3  
@@ -35,8 +33,7 @@ class SingleViewto3D(nn.Module):
             # mesh_pred = ico_sphere(4, self.device)
             mesh_pred = torus(r=0.25, R=1, sides=3, rings=6)
             self.mesh_pred = pytorch3d.structures.Meshes(mesh_pred.verts_list()*args.batch_size, mesh_pred.faces_list()*args.batch_size)
-            # TODO:
-            # self.decoder =             
+            self.decoder = torch.nn.Linear(512, self.mesh_pred.verts_packed().shape[0] * 3)
 
     def forward(self, images, args):
         results = dict()

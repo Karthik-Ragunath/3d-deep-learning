@@ -41,7 +41,7 @@ def render_mesh(mesh, image_size=256, filename="mesh.jpg"):
     renderer = get_mesh_renderer(image_size=image_size)
     vertices = mesh.verts_list()[0]
     textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
-    textures = pytorch3d.renderer.TexturesVertex(textures.unsqueeze(0))
+    textures = pytorch3d.renderer.TexturesVertex(vertices.unsqueeze(0))
     mesh.textures = textures
     
     mesh = mesh.to(device)

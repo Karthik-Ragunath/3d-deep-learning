@@ -95,7 +95,7 @@ def train_model(args):
         print(f"Succesfully loaded iter {start_iter}")
     
     print("Starting training !")
-    for step in range(start_iter, args.max_iter):
+    for step in range(start_iter, args.max_iter + 1):
         iter_start_time = time.time()
 
         if step % len(train_loader) == 0: #restart after one epoch

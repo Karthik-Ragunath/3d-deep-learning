@@ -12,6 +12,11 @@ import mcubes
 import utils_vox
 import matplotlib.pyplot as plt 
 
+import os
+
+import pytorch3d
+from utils import get_mesh_renderer, get_points_renderer
+
 def get_args_parser():
     parser = argparse.ArgumentParser('Singleto3D', add_help=False)
     parser.add_argument('--arch', default='resnet18', type=str)
@@ -82,6 +87,68 @@ def compute_sampling_metrics(pred_points, gt_points, thresholds, eps=1e-8):
     # Move all metrics to CPU
     metrics = {k: v.cpu() for k, v in metrics.items()}
     return metrics
+
+def render_mesh(mesh, image_size=256, filename="mesh.jpg"):
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
+    
+    # Get the renderer.
+    renderer = get_mesh_renderer(image_size=image_size)
+    vertices = mesh.verts_list()[0]
+    textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
+    textures = pytorch3d.renderer.TexturesVertex(textures.unsqueeze(0))
+    mesh.textures = textures
+    
+    mesh = mesh.to(device)
+
+    # Prepare the camera:
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+        R=torch.eye(3).unsqueeze(0), T=torch.tensor([[0, 0, 3]]), fov=60, device=device
+    )
+
+    # Place a point light in front of the cow.
+    lights = pytorch3d.renderer.PointLights(location=[[0, 0, -3]], device=device)
+
+    rend = renderer(mesh, cameras=cameras, lights=lights)
+    rend = rend.detach().cpu().numpy()[0, ..., :3]  # (B, H, W, 4) -> (H, W, 3)
+    output_path = "images"
+    os.makedirs(output_path, exist_ok=True)
+    output_path = os.path.join(output_path, filename)
+    plt.imsave(output_path, rend)
+
+def render_voxels(voxels, output_path='voxels_source.jpg'):
+    # voxels_forward_passed = voxels.squeeze(0).detach().cpu().numpy()
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
+    vertices, faces = mcubes.marching_cubes(voxels.squeeze().detach().cpu().numpy(), isovalue=0)
+    vertices = torch.tensor(vertices).float()
+    faces = torch.tensor(faces.astype(int))
+    voxel_size = voxels.shape[0]
+    min_value = -1
+    max_value = 1
+    # Vertex coordinates are indexed by array position, so we need to
+    # renormalize the coordinate system.
+    vertices = (vertices / voxel_size) * (max_value - min_value) + min_value
+    textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
+    textures = pytorch3d.renderer.TexturesVertex(vertices.unsqueeze(0))
+
+    mesh = pytorch3d.structures.Meshes([vertices], [faces], textures=textures).to(
+        device
+    )
+    lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
+    renderer = get_mesh_renderer(image_size=256, device=device)
+    R, T = pytorch3d.renderer.look_at_view_transform(dist=3, elev=0, azim=45)
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
+    rend = renderer(mesh, cameras=cameras, lights=lights)
+    rend = rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
+    output_dir = "images"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, output_path)
+    plt.imsave(output_path, rend)
 
 def evaluate(predictions, mesh_gt, thresholds, args):
     if args.type == "vox":
