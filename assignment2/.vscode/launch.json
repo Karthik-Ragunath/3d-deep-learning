@@ -51,6 +51,39 @@
             "env": {
                 "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
             }
+        },
+        {
+            "name": "train_model:voxel",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--type", "vox",
+                // "--max_iter", "5000",
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
+            }
+        },
+        {
+            "name": "eval_model:voxel",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/eval_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--type", "vox",
+                // "--max_iter", "5000",
+                "--load_checkpoint"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
+            }
         }
     ]
 }

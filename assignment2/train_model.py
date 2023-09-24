@@ -7,7 +7,9 @@ from  pytorch3d.datasets.r2n2.utils import collate_batched_R2N2
 import dataset_location
 from pytorch3d.ops import sample_points_from_meshes
 import losses
+import warnings
 
+warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Singleto3D', add_help=False)

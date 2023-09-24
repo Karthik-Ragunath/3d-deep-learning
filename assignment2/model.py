@@ -3,7 +3,7 @@ from torchvision import transforms
 import time
 import torch.nn as nn
 import torch
-from pytorch3d.utils import ico_sphere
+from pytorch3d.utils import ico_sphere, torus
 import pytorch3d
 
 class SingleViewto3D(nn.Module):
@@ -20,20 +20,20 @@ class SingleViewto3D(nn.Module):
         if args.type == "vox":
             # Input: b x 512
             # Output: b x 1 x 32 x 32 x 32
-            pass
-            # TODO:
-            # self.decoder =             
+            self.decoder = torch.nn.Linear(512, 32 * 32 * 32)
         elif args.type == "point":
             # Input: b x 512
             # Output: b x args.n_points x 3  
             self.n_point = args.n_points
+            self.decoder = torch.nn.Linear(512, self.n_point * 3)
             # TODO:
             # self.decoder =             
         elif args.type == "mesh":
             # Input: b x 512
             # Output: b x mesh_pred.verts_packed().shape[0] x 3  
             # try different mesh initializations
-            mesh_pred = ico_sphere(4, self.device)
+            # mesh_pred = ico_sphere(4, self.device)
+            mesh_pred = torus(r=0.25, R=1, sides=3, rings=6)
             self.mesh_pred = pytorch3d.structures.Meshes(mesh_pred.verts_list()*args.batch_size, mesh_pred.faces_list()*args.batch_size)
             # TODO:
             # self.decoder =             
@@ -54,13 +54,14 @@ class SingleViewto3D(nn.Module):
 
         # call decoder
         if args.type == "vox":
-            # TODO:
-            # voxels_pred =             
+            voxels_pred = self.decoder(encoded_feat)
+            voxels_pred = voxels_pred.view(B, 1, 32, 32, 32)
             return voxels_pred
 
         elif args.type == "point":
             # TODO:
-            # pointclouds_pred =             
+            pointclouds_pred = self.decoder(encoded_feat)
+            pointclouds_pred = pointclouds_pred.view(B, self.n_point, 3)
             return pointclouds_pred
 
         elif args.type == "mesh":
