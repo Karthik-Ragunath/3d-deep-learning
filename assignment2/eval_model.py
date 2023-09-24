@@ -10,7 +10,8 @@ from pytorch3d.ops import sample_points_from_meshes
 from pytorch3d.ops import knn_points
 import mcubes
 import utils_vox
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+from pytorch3d.io import IO
 
 import os
 
@@ -52,6 +53,15 @@ def save_plot(thresholds, avg_f1_score, args):
     ax.set_ylabel('F1-score')
     ax.set_title(f'Evaluation {args.type}')
     plt.savefig(f'eval_{args.type}', bbox_inches='tight')
+
+def save_mesh(mesh_data, output_dir="images"):
+    obj_filename = os.path.join(output_dir, "mesh_1.ply")
+    IO().save_mesh(
+        mesh_data,
+        obj_filename,
+        binary=False,
+        include_textures=True
+    )
 
 
 def compute_sampling_metrics(pred_points, gt_points, thresholds, eps=1e-8):
@@ -104,9 +114,13 @@ def render_mesh(mesh, image_size=256, filename="mesh.jpg"):
     mesh = mesh.to(device)
 
     # Prepare the camera:
+    # R, T = pytorch3d.renderer.look_at_view_transform(dist=0, elev=0, azim=0)
     cameras = pytorch3d.renderer.FoVPerspectiveCameras(
-        R=torch.eye(3).unsqueeze(0), T=torch.tensor([[0, 0, 3]]), fov=60, device=device
+        R=torch.eye(3).unsqueeze(0), T=torch.tensor([[0, 0, -6]]), fov=120, device=device
     )
+    # cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+    #     R=R, T=T, device=device
+    # )
 
     # Place a point light in front of the cow.
     lights = pytorch3d.renderer.PointLights(location=[[0, 0, -3]], device=device)
@@ -141,7 +155,7 @@ def render_voxels(voxels, output_path='voxels_source.jpg'):
     )
     lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
     renderer = get_mesh_renderer(image_size=256, device=device)
-    R, T = pytorch3d.renderer.look_at_view_transform(dist=3, elev=0, azim=45)
+    R, T = pytorch3d.renderer.look_at_view_transform(dist=20, elev=0, azim=45)
     cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
     rend = renderer(mesh, cameras=cameras, lights=lights)
     rend = rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
@@ -205,6 +219,7 @@ def evaluate_model(args):
     
     print("Starting evaluating !")
     max_iter = len(eval_loader)
+    exc_counter = 0
     for step in range(start_iter, max_iter):
         iter_start_time = time.time()
 
@@ -220,32 +235,35 @@ def evaluate_model(args):
 
         if args.type == "vox":
             predictions = predictions.permute(0,1,4,3,2)
+        try:
+            metrics = evaluate(predictions, mesh_gt, thresholds, args)
 
-        metrics = evaluate(predictions, mesh_gt, thresholds, args)
+            # TODO:
+            # if (step % args.vis_freq) == 0:
+            #     # visualization block
+            #     #  rend = 
+            #     plt.imsave(f'vis/{step}_{args.type}.png', rend)
+        
 
-        # TODO:
-        # if (step % args.vis_freq) == 0:
-        #     # visualization block
-        #     #  rend = 
-        #     plt.imsave(f'vis/{step}_{args.type}.png', rend)
-      
+            total_time = time.time() - start_time
+            iter_time = time.time() - iter_start_time
 
-        total_time = time.time() - start_time
-        iter_time = time.time() - iter_start_time
+            f1_05 = metrics['F1@0.050000']
+            avg_f1_score_05.append(f1_05)
+            avg_p_score.append(torch.tensor([metrics["Precision@%f" % t] for t in thresholds]))
+            avg_r_score.append(torch.tensor([metrics["Recall@%f" % t] for t in thresholds]))
+            avg_f1_score.append(torch.tensor([metrics["F1@%f" % t] for t in thresholds]))
 
-        f1_05 = metrics['F1@0.050000']
-        avg_f1_score_05.append(f1_05)
-        avg_p_score.append(torch.tensor([metrics["Precision@%f" % t] for t in thresholds]))
-        avg_r_score.append(torch.tensor([metrics["Recall@%f" % t] for t in thresholds]))
-        avg_f1_score.append(torch.tensor([metrics["F1@%f" % t] for t in thresholds]))
-
-        print("[%4d/%4d]; ttime: %.0f (%.2f, %.2f); F1@0.05: %.3f; Avg F1@0.05: %.3f" % (step, max_iter, total_time, read_time, iter_time, f1_05, torch.tensor(avg_f1_score_05).mean()))
+            print("[%4d/%4d]; ttime: %.0f (%.2f, %.2f); F1@0.05: %.3f; Avg F1@0.05: %.3f" % (step, max_iter, total_time, read_time, iter_time, f1_05, torch.tensor(avg_f1_score_05).mean()))
+        except Exception as e:
+            print("exception raised")
+            exc_counter += 1
     
 
     avg_f1_score = torch.stack(avg_f1_score).mean(0)
 
     save_plot(thresholds, avg_f1_score,  args)
-    print('Done!')
+    print('Done!', exc_counter)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Singleto3D', parents=[get_args_parser()])
