@@ -31,6 +31,35 @@ def get_args_parser():
     parser.add_argument('--output_path', default='images', type=str, required=False)
     return parser
 
+def render_mesh(mesh, image_size=256, filename="mesh.jpg"):
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
+    
+    # Get the renderer.
+    renderer = get_mesh_renderer(image_size=image_size)
+    vertices = mesh.verts_list()[0]
+    textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
+    textures = pytorch3d.renderer.TexturesVertex(textures.unsqueeze(0))
+    mesh.textures = textures
+    
+    mesh = mesh.to(device)
+
+    # Prepare the camera:
+    cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+        R=torch.eye(3).unsqueeze(0), T=torch.tensor([[0, 0, 3]]), fov=60, device=device
+    )
+
+    # Place a point light in front of the cow.
+    lights = pytorch3d.renderer.PointLights(location=[[0, 0, -3]], device=device)
+
+    rend = renderer(mesh, cameras=cameras, lights=lights)
+    rend = rend.detach().cpu().numpy()[0, ..., :3]  # (B, H, W, 4) -> (H, W, 3)
+    os.makedirs(args.output_path, exist_ok=True)
+    output_path = os.path.join(args.output_path, filename)
+    plt.imsave(output_path, rend)
+
 def fit_mesh(mesh_src, mesh_tgt, args):
     start_iter = 0
     start_time = time.time()
@@ -64,6 +93,8 @@ def fit_mesh(mesh_src, mesh_tgt, args):
     
     mesh_src.offset_verts_(deform_vertices_src)
 
+    render_mesh(mesh=mesh_src, image_size=512, filename="source_mesh.jpg")
+    render_mesh(mesh=mesh_tgt, image_size=512, filename="target_mesh.jpg")
     print('Done!')
 
 def render_point_clouds(point_cloud, filename='point_cloud.jpg'):

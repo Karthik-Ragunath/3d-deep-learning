@@ -35,6 +35,22 @@
             "env": {
                 "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
             }
+        },
+        {
+            "name": "fit_mesh",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/fit_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--type", "mesh",
+                // "--max_iter", "5000"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
+            }
         }
     ]
 }
