@@ -172,6 +172,7 @@ def evaluate(predictions, mesh_gt, thresholds, args):
         vertices_src = torch.tensor(vertices_src).float()
         faces_src = torch.tensor(faces_src.astype(int))
         mesh_src = pytorch3d.structures.Meshes([vertices_src], [faces_src])
+        save_mesh(mesh_src, filename="images")
         pred_points = sample_points_from_meshes(mesh_src, args.n_points)
         pred_points = utils_vox.Mem2Ref(pred_points, H, W, D)
     elif args.type == "point":

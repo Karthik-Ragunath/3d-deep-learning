@@ -85,6 +85,23 @@
             "env": {
                 "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
             }
+        },
+        {
+            "name": "train_model:point",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/train_model.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--type", "point",
+                // "--max_iter", "5000",
+                // "--load_checkpoint"
+            ],
+            "env": {
+                "PYTHONPATH": "$PYTHONPATH:/home/kxa200005/github/3d_DL/assignment2"
+            }
         }
     ]
 }
