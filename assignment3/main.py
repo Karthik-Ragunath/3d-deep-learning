@@ -107,13 +107,15 @@ def render_images(
             plt.imsave('images/ray_directions_vis.jpg', ray_vis)
 
         # TODO (1.4): Implement point sampling along rays in sampler.py
-        ray_bundle = model.sampler(ray_bundle)
+        ray_bundle_sampled = model.sampler(ray_bundle)
+        pcloud_points = ray_bundle_sampled.sample_points.view(-1, 3) #reshape into ([65536 x 64, 3])
+        pcloud_points = pcloud_points.unsqueeze(0) #reshape into ([1, 65536 x 64, 3])
 
         # TODO (1.4): Visualize sample points as point cloud
         if cam_idx == 0 and file_prefix == '':
             _ = render_points(
                 filename="images/point_sampling.jpg", 
-                points=ray_bundle.sample_points, 
+                points=pcloud_points, 
                 image_size=image_size
             )
 
