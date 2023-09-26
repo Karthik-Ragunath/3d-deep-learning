@@ -34,7 +34,7 @@ from dataset import (
     get_nerf_datasets,
     trivial_collate,
 )
-
+from render_functions import render_points
 
 # Model class containing:
 #   1) Implicit volume defining the scene
@@ -107,11 +107,15 @@ def render_images(
             plt.imsave('images/ray_directions_vis.jpg', ray_vis)
 
         # TODO (1.4): Implement point sampling along rays in sampler.py
-        pass
+        ray_bundle = model.sampler(ray_bundle)
 
         # TODO (1.4): Visualize sample points as point cloud
         if cam_idx == 0 and file_prefix == '':
-            pass
+            _ = render_points(
+                filename="images/point_sampling.jpg", 
+                points=ray_bundle.sample_points, 
+                image_size=image_size
+            )
 
         # TODO (1.5): Implement rendering in renderer.py
         out = model(ray_bundle)
