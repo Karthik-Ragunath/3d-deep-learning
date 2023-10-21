@@ -95,19 +95,19 @@ class SDFVolume(torch.nn.Module):
         ) * self.alpha
 
     def forward(self, ray_bundle):
-        sample_points = ray_bundle.sample_points.view(-1, 3)
-        depth_values = ray_bundle.sample_lengths[..., 0]
+        sample_points = ray_bundle.sample_points.view(-1, 3) # torch.Size([2097152, 3])
+        depth_values = ray_bundle.sample_lengths[..., 0] # torch.Size([32768, 64])
         deltas = torch.cat(
             (
                 depth_values[..., 1:] - depth_values[..., :-1],
                 1e10 * torch.ones_like(depth_values[..., :1]),
             ),
             dim=-1,
-        ).view(-1, 1)
+        ).view(-1, 1) # torch.Size([2097152, 1])
 
         # Transform SDF to density
-        signed_distance = self.sdf(ray_bundle)
-        density = self._sdf_to_density(signed_distance)
+        signed_distance = self.sdf(ray_bundle) # torch.Size([2097152, 1])
+        density = self._sdf_to_density(signed_distance) # torch.Size([2097152, 1])
 
         # Outputs
         if self.rainbow:
@@ -115,13 +115,13 @@ class SDFVolume(torch.nn.Module):
                 torch.abs(sample_points - self.sdf.center),
                 0.02,
                 0.98
-            )
+            ) # torch.Size([2097152, 3])
         else:
             base_color = 1.0
 
         out = {
-            'density': -torch.log(1.0 - density) / deltas,
-            'feature': base_color * self.feature * density.new_ones(sample_points.shape[0], 1)
+            'density': -torch.log(1.0 - density) / deltas, # torch.Size([2097152, 1])
+            'feature': base_color * self.feature * density.new_ones(sample_points.shape[0], 1) # torch.Size([2097152, 3])
         }
 
         return out

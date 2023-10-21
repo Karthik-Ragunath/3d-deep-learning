@@ -35,11 +35,11 @@ class StratifiedRaysampler(torch.nn.Module):
     ):
         device = self.get_device()
         # TODO (1.4): Compute z values for self.n_pts_per_ray points uniformly sampled between [near, far]
-        z_vals = Uniform(self.min_depth, self.max_depth).sample((self.n_pts_per_ray,1)).unsqueeze(0).repeat(ray_bundle.directions.shape[0], 1, 1).to(device)
-        restructured_ray_directions = ray_bundle.directions.view(ray_bundle.directions.shape[0], -1, 3)
+        z_vals = Uniform(self.min_depth, self.max_depth).sample((self.n_pts_per_ray,1)).unsqueeze(0).repeat(ray_bundle.directions.shape[0], 1, 1).to(device) # torch.Size([32768, 64, 1])
+        restructured_ray_directions = ray_bundle.directions.view(ray_bundle.directions.shape[0], -1, 3) # torch.Size([32768, 1, 3])
         # TODO (1.4): Sample points from z values # N * 64 * 3
-        ray_origins_reshaped = ray_bundle.origins.view(-1, 1, 3)
-        sample_points = ray_origins_reshaped + torch.bmm(z_vals, restructured_ray_directions)
+        ray_origins_reshaped = ray_bundle.origins.view(-1, 1, 3) # torch.Size([1, 1, 3])
+        sample_points = ray_origins_reshaped + torch.bmm(z_vals, restructured_ray_directions) # torch.Size([32768, 64, 3])
         # Return
         return ray_bundle._replace(
             sample_points=sample_points,

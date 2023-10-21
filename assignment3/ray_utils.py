@@ -146,7 +146,7 @@ def get_device():
 
 # Get rays from pixel values
 def get_rays_from_pixels(xy_grid, image_size, camera):
-    W, H = image_size[0], image_size[1]
+    W, H = image_size[0], image_size[1] # 256, 256
 
     # TODO (1.3): Map pixels to points on the image plane at Z=1
     ndc_points = torch.cat([xy_grid, torch.ones((W * H, 1))], dim=1)
@@ -158,19 +158,20 @@ def get_rays_from_pixels(xy_grid, image_size, camera):
             torch.ones_like(ndc_points[..., -1:])
         ],
         dim=-1,
-    ).to(device)
+    ).to(device) # torch.Size([65536, 4])
     torch.cuda.empty_cache()
     # TODO (1.3): Use camera.unproject to get world space points on the image plane from NDC space points
     # world_space_points = camera.unproject_points(ndc_points, world_coordinates=True)
     # world_space_points = camera.unproject_points(ndc_points, in_ndc=False, from_ndc=False, world_coordinates=True,)
-    world_space_points = camera.unproject_points(ndc_points)
+    world_space_points = camera.unproject_points(ndc_points) # torch.Size([65536, 3])
 
     # TODO (1.3): Get ray origins from camera center
-    ray_origins = camera.get_camera_center().to(device)
+    ray_origins = camera.get_camera_center().to(device) # torch.Size([1, 3])
+    ray_origins = ray_origins.repeat(world_space_points.shape[0], 1) # torch.Size([65536, 3])
 
     # TODO (1.3): Get normalized ray directions
-    ray_directions = world_space_points - ray_origins
-    normalized_ray_directions = ray_directions / torch.norm(ray_directions, dim=1, keepdim=True)
+    ray_directions = world_space_points - ray_origins # torch.Size([65536, 3])
+    normalized_ray_directions = ray_directions / torch.norm(ray_directions, dim=1, keepdim=True) # torch.Size([65536, 3])
 
     # Create and return RayBundle
     return RayBundle(
