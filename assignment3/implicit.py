@@ -45,15 +45,24 @@ class BoxSDF(torch.nn.Module):
         )
 
     def forward(self, ray_bundle):
-        sample_points = ray_bundle.sample_points.view(-1, 3)
-        diff = torch.abs(sample_points - self.center) - self.side_lengths / 2.0
-
+        sample_points = ray_bundle.sample_points.view(-1, 3) # torch.Size([2097152, 3])
+        diff = torch.abs(sample_points - self.center) - self.side_lengths / 2.0 # torch.Size([2097152, 3])
+        # self.center
+        # Parameter containing:
+        # tensor([[0., 0., 0.]], device='cuda:0', requires_grad=True)
         signed_distance = torch.linalg.norm(
-            torch.maximum(diff, torch.zeros_like(diff)),
+            torch.maximum(diff, torch.zeros_like(diff)), # torch.Size([2097152, 3])
             dim=-1
-        ) + torch.minimum(torch.max(diff, dim=-1)[0], torch.zeros_like(diff[..., 0]))
+        ) + torch.minimum(torch.max(diff, dim=-1)[0], torch.zeros_like(diff[..., 0])) # torch.max(diff, dim=-1)[0] -> torch.Size([2097152])
+        
+        # signed_distance.shape - torch.Size([2097152])
+        
+        # torch.min(min_vector)
+        # tensor(-0.8434, device='cuda:0', grad_fn=<MinBackward1>)
+        # torch.max(min_vector)
+        # tensor(0., device='cuda:0', grad_fn=<MaxBackward1>)
 
-        return signed_distance.unsqueeze(-1)
+        return signed_distance.unsqueeze(-1) # torch.Size([2097152, 1])
 
 
 sdf_dict = {
@@ -107,7 +116,18 @@ class SDFVolume(torch.nn.Module):
 
         # Transform SDF to density
         signed_distance = self.sdf(ray_bundle) # torch.Size([2097152, 1])
+
+        # torch.max(signed_distance)
+        # tensor(2.8127, device='cuda:0', grad_fn=<MaxBackward1>)
+        # torch.min(signed_distance)
+        # tensor(-0.6842, device='cuda:0', grad_fn=<MinBackward1>)
+
         density = self._sdf_to_density(signed_distance) # torch.Size([2097152, 1])
+
+        # torch.max(density)
+        # tensor(1.0000, device='cuda:0', grad_fn=<MaxBackward1>)
+        # torch.min(density)
+        # tensor(1.8543e-25, device='cuda:0', grad_fn=<MinBackward1>)
 
         # Outputs
         if self.rainbow:
@@ -116,6 +136,10 @@ class SDFVolume(torch.nn.Module):
                 0.02,
                 0.98
             ) # torch.Size([2097152, 3])
+
+            # self.sdf.center
+            # Parameter containing:
+            # tensor([[0., 0., 0.]], device='cuda:0', requires_grad=True)
         else:
             base_color = 1.0
 
@@ -125,7 +149,80 @@ class SDFVolume(torch.nn.Module):
         }
 
         return out
+    
+"""
+what is the idea behind using this formula as density
+-torch.log(1.0 - density) / deltas
 
+The formula \(-\text{torch.log}(1.0 - \text{density}) / \text{deltas}\) used for the density in the provided code is associated with the rendering of volumes in computer graphics, especially in the context of raymarching and volume ray casting. Let's break it down:
+
+1. **Density Scaling with Deltas**: 
+   - Dividing by `deltas` scales the density based on the segment length between two sample points on a ray. If two samples are very close to each other, you expect the change in density to be small and vice versa. This normalization is important to ensure consistent and realistic rendering regardless of the sampling resolution.
+
+2. **Negative Logarithm Transformation**: 
+   - The term \(-\text{torch.log}(1.0 - \text{density})\) is a common transformation in volume rendering. The idea behind this is related to the Beer-Lambert law from optics, which describes the attenuation of light as it passes through a medium.
+   - The basic intuition is: if you have a very high density (close to 1), then \(1.0 - \text{density}\) is close to 0, and the negative logarithm of a value close to 0 is a large positive number, indicating high attenuation or opacity. Conversely, if the density is low, the negative logarithm produces a value closer to 0, indicating low attenuation or transparency.
+   - This transformation is especially useful for raymarching. As you accumulate color and opacity along a ray, this formula ensures that regions of high density contribute more to the final color and opacity, making them appear more "solid".
+
+3. **Why Not Use Density Directly**:
+   - Without transformation, using raw density values could lead to unrealistic results. Regions of slightly different densities might appear nearly identical, and subtle features could be lost. The logarithmic transformation accentuates differences in densities, making variations more perceptible and producing a more visually appealing and informative result.
+
+In summary, the given formula effectively scales and transforms the raw density values derived from the SDF into values more suitable for volume rendering. It ensures that the rendered volume has a realistic appearance with discernible features, even if the original density differences were subtle.
+"""
+
+"""
+what is the idea behind using this formula for feature
+'feature': base_color * self.feature * density.new_ones(sample_points.shape[0], 1) # torch.Size([2097152, 3])
+
+The formula for `feature` in the provided code seems to represent the color or visual attribute of each sampled point within the volume. Let's break down its components:
+
+1. **base_color**: 
+   - This variable determines the underlying color of the sample point. If the `rainbow` flag is set, this color changes based on the distance from the center of the SDF, which can be a way to visualize the depth or layers of the volume. Otherwise, it has a fixed value (`1.0`), making it neutral and not affecting the final color.
+
+2. **self.feature**: 
+   - This is a learnable parameter from the model, meaning it can be adjusted during training or optimization. It represents a global color modulation factor for the entire volume. By adjusting `self.feature`, the model can learn the optimal color intensity or weighting for the best visual representation or some other objective.
+
+3. **density.new_ones(sample_points.shape[0], 1)**:
+   - This creates a tensor of ones with the same datatype and device as `density` and with the shape `(sample_points.shape[0], 1)`. Essentially, it's a tensor filled with the value `1.0` and has the same number of rows as `sample_points`. This tensor acts as a multiplier, ensuring that the feature value remains consistent across all sample points. In this particular formula, it seems to be redundant since multiplying by a tensor of ones won't change the value. However, it's possible that in other contexts or variations of the code, this tensor might be replaced with another factor, and keeping the structure consistent makes it easier to make such changes.
+
+The product of these three components gives the final `feature` value for each sample point. The idea behind this formula is to modulate the basic color (`base_color`) of each point with a global feature scaling (`self.feature`) and ensure it's consistent across all points (multiplied by the tensor of ones).
+
+In essence, this `feature` formula allows both global and local adjustments to the color attributes of the volume. The `base_color` provides local differentiation, `self.feature` offers a global modulation, and the tensor of ones ensures consistent shaping across the dataset.
+"""
+
+"""
+explain how this function converts sdf values to densities
+def _sdf_to_density(self, signed_distance):
+    # Convert signed distance to density with alpha, beta parameters
+    return torch.where(
+        signed_distance > 0,
+        0.5 * torch.exp(-signed_distance / self.beta),
+        1 - 0.5 * torch.exp(signed_distance / self.beta),
+    ) * self.alpha
+
+This function `_sdf_to_density` aims to convert the values of a signed distance function (SDF) to density values. Let's break down its steps and the underlying rationale:
+
+1. **Signed Distance Values**:
+   - An SDF gives us the closest distance to a surface, with a positive value meaning outside the surface and a negative value meaning inside. The value `0` typically denotes being exactly on the surface.
+
+2. **Exponential Transformation**:
+   - The function applies an exponential transformation to the SDF values. The rationale behind this is to create rapidly decreasing density values as you move farther from the surface.
+   - `torch.exp(-signed_distance / self.beta)` ensures that the density drops off exponentially as the `signed_distance` increases. The parameter `self.beta` controls the rate of this drop-off.
+
+3. **Density Calculation**:
+   - For `signed_distance > 0` (outside the surface): The density is given by `0.5 * torch.exp(-signed_distance / self.beta)`. As the distance from the surface increases, the density value drops off, approaching 0.
+   - For `signed_distance <= 0` (inside the surface): The density is `1 - 0.5 * torch.exp(signed_distance / self.beta)`. The use of the `1 - ...` formula ensures that, inside the object, the density starts off high (close to 1) right beneath the surface and decreases as we move inwards.
+
+4. **Alpha Modulation**:
+   - Finally, the densities are multiplied by `self.alpha`. This is a scaling factor that can be seen as a global control over the overall opacity or density of the object. If `self.alpha` is a small value, the object will appear more transparent throughout, while a larger `self.alpha` will make it appear denser.
+
+In essence, this function ensures that:
+- Points on or very close to the surface have the highest density.
+- The density drops off rapidly as you move away from the surface, both inside and outside the object.
+- The overall density can be controlled using the `self.alpha` parameter. 
+
+The conversion from SDF to density in this manner is useful in volume rendering, especially in raymarching, because it helps to visualize surfaces and boundaries within the volume clearly. The rapid exponential drop-off ensures that regions away from the surface do not obscure the surface itself in the rendered image.
+"""
 
 class HarmonicEmbedding(torch.nn.Module):
     def __init__(

@@ -56,7 +56,7 @@ class VolumeRenderer(torch.nn.Module):
             T_prev = T_curr
 
         T = torch.stack(T, dim=1)
-        transmittance = (1 - torch.exp(-rays_density * deltas + eps))
+        transmittance = (1 - torch.exp(-rays_density * deltas))
         # print(f"shape of T {T.shape}, transmittance {transmittance.shape}")
         weights = T * transmittance
 
@@ -74,7 +74,7 @@ class VolumeRenderer(torch.nn.Module):
         # chunk_size = weights.shape[0]
         # num_samples = weights.shape[1]
         # rays_feature_reshape = rays_feature.view(chunk_size, num_samples, -1)
-        # # rays_feature_reshape = rays_feature_reshape.squeeze(2)
+        # rays_feature_reshape = rays_feature_reshape.squeeze(2)
         # # print(f"rays_feature_reshape shape: {rays_feature_reshape.shape}, weights shape: {weights.shape}")
         # feature = torch.sum(weights * rays_feature_reshape, dim=1)
         # return feature
@@ -120,6 +120,8 @@ class VolumeRenderer(torch.nn.Module):
 
             # TODO (1.5): Render (color) features using weights
             feature = self._aggregate(weights=weights, rays_feature=feature) # torch.Size([32768, 3])
+
+            # weights = weights.view(self._chunk_size, -1)
 
             # TODO (1.5): Render depth map
             depth = self._aggregate(weights=weights, rays_feature=depth_values) # torch.Size([32768, 1])
