@@ -258,11 +258,27 @@ class HarmonicEmbedding(torch.nn.Module):
     def forward(self, x: torch.Tensor):
         embed = (x[..., None] * self._frequencies).view(*x.shape[:-1], -1)
 
-        if self.include_input:
+        if self.include_input: # True
             return torch.cat((embed.sin(), embed.cos(), x), dim=-1)
         else:
             return torch.cat((embed.sin(), embed.cos()), dim=-1)
 
+# x[..., None].shape
+# torch.Size([1024, 3, 1])
+# self._frequencies
+# tensor([1., 2.], device='cuda:0')
+# (x[..., None] * self._frequencies).shape
+# torch.Size([1024, 3, 2])
+# embed.shape
+# torch.Size([1024, 6])
+# embed.sin().shape
+# torch.Size([1024, 6])
+# embed.cos().shape
+# torch.Size([1024, 6])
+# x.shape
+# torch.Size([1024, 3])
+# torch.cat((embed.sin(), embed.cos(), x), dim=-1).shape
+# torch.Size([1024, 15])
 
 class LinearWithRepeat(torch.nn.Linear):
     def forward(self, input):
@@ -329,8 +345,31 @@ class NeuralRadianceField(torch.nn.Module):
         embedding_dim_xyz = self.harmonic_embedding_xyz.output_dim
         embedding_dim_dir = self.harmonic_embedding_dir.output_dim
 
-        pass
+        # MLPWithInputSkips                   (n_layers,     input_dim,  output_dim,      skip_dim,             hidden_dim,             input_skips)
+        output_dim = 128
+        self.MLP = MLPWithInputSkips(cfg.n_layers_xyz, embedding_dim_xyz, output_dim , embedding_dim_xyz, cfg.n_hidden_neurons_xyz, cfg.append_xyz)
 
+        #MLP layers
+        self.linear1 = torch.nn.Linear(output_dim, 4)
+        self.linear2 = torch.nn.Linear(output_dim, 64)
+        self.relu = torch.nn.ReLU()
+        self.sigmoid = torch.nn.Sigmoid()
+        
+    def forward(self, ray_bundle):
+        # TODO (forwards pass)
+        direction_embedding = self.harmonic_embedding_dir(ray_bundle.directions) # torch.Size([1024, 15])
+        position_embedding = self.harmonic_embedding_xyz(ray_bundle.sample_points.view(-1, 3)) # torch.Size([131072, 39])
+
+        output = {"density": None, "feature": None}
+        out = self.linear1(self.MLP(position_embedding, position_embedding)) # torch.Size([131072, 4])
+
+        output["density"] = self.relu(out[:, 0]) # torch.Size([131072])
+        output["feature"] = self.sigmoid(out[:, 1:]) # torch.Size([131072, 3])
+
+        return output
+
+# self.MLP(position_embedding, position_embedding).shape
+# torch.Size([131072, 128])
 
 volume_dict = {
     'sdf_volume': SDFVolume,

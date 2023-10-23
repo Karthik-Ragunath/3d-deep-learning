@@ -89,10 +89,16 @@ def get_pixels_from_image(image_size, camera):
     W, H = image_size[0], image_size[1]
 
     # TODO (1.3): Generate pixel coordinates from [0, W] in x and [0, H] in y
-    x_pixel_coordinates = torch.linspace(-1, 1, W)
+    # x_pixel_coordinates = torch.linspace(-1, 1, W)
+    # y_pixel_coordinates = torch.linspace(-1, 1, H)
+    x_pixel_coordinates = torch.linspace(0, W - 1, W)
+    y_pixel_coordinates = torch.linspace(0, H - 1, H)
 
     # TODO (1.3): Convert to the range [-1, 1] in both x and y
-    y_pixel_coordinates = torch.linspace(-1, 1, H)
+
+    x_pixel_coordinates = 2 * (x_pixel_coordinates / (W - 1)) - 1
+    y_pixel_coordinates = 2 * (y_pixel_coordinates / (H - 1)) - 1
+
 
     # Create grid of coordinates
     xy_grid = torch.stack(
@@ -129,7 +135,8 @@ def get_random_pixels_from_image(n_pixels, image_size, camera):
     xy_grid = get_pixels_from_image(image_size, camera)
     
     # TODO (2.1): Random subsampling of pixel coordinates
-    pass
+    idx = torch.randperm(xy_grid.shape[0])
+    xy_grid_sub = xy_grid[idx].view(xy_grid.size())
 
     # Return
     return xy_grid_sub.reshape(-1, 2)[:n_pixels]
@@ -149,8 +156,7 @@ def get_rays_from_pixels(xy_grid, image_size, camera):
     W, H = image_size[0], image_size[1] # 256, 256
 
     # TODO (1.3): Map pixels to points on the image plane at Z=1
-    ndc_points = torch.cat([xy_grid, torch.ones((W * H, 1))], dim=1)
-
+    ndc_points = xy_grid
     device = get_device()
     ndc_points = torch.cat(
         [
@@ -158,7 +164,7 @@ def get_rays_from_pixels(xy_grid, image_size, camera):
             torch.ones_like(ndc_points[..., -1:])
         ],
         dim=-1,
-    ).to(device) # torch.Size([65536, 4])
+    ).to(device) # torch.Size([65536, 3])
     torch.cuda.empty_cache()
     # TODO (1.3): Use camera.unproject to get world space points on the image plane from NDC space points
     # world_space_points = camera.unproject_points(ndc_points, world_coordinates=True)

@@ -77,6 +77,15 @@ class Model(torch.nn.Module):
             ray_bundle
         )
 
+def get_device():
+    """
+    Checks if GPU is available and returns device accordingly.
+    """
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
+    return device
 
 def render_images(
     model,
@@ -132,8 +141,13 @@ def render_images(
 
         # TODO (1.5): Visualize depth
         if cam_idx == 2 and file_prefix == '':
-            pass
-
+            depth_img = np.array(
+                out['depth'].view(
+                    image_size[1], image_size[0]
+                ).detach().cpu()
+            )
+            plt.imsave("images/depth.png", depth_img)
+        
         # Save
         if save:
             plt.imsave(
@@ -202,13 +216,14 @@ def train(
             # Sample rays
             xy_grid = get_random_pixels_from_image(cfg.training.batch_size, image_size, camera) # TODO (2.1): implement in ray_utils.py
             ray_bundle = get_rays_from_pixels(xy_grid, image_size, camera)
+            xy_grid = xy_grid.to(get_device())
             rgb_gt = sample_images_at_xy(image, xy_grid)
 
             # Run model forward
             out = model(ray_bundle)
 
             # TODO (2.2): Calculate loss
-            loss = None
+            loss = torch.nn.functional.mse_loss(out['feature'], rgb_gt)
 
             # Backprop
             optimizer.zero_grad()
@@ -322,13 +337,14 @@ def train_nerf(
             ray_bundle = get_rays_from_pixels(
                 xy_grid, cfg.data.image_size, camera
             )
+            xy_grid = xy_grid.to(get_device())
             rgb_gt = sample_images_at_xy(image, xy_grid)
 
             # Run model forward
             out = model(ray_bundle)
 
             # TODO (3.1): Calculate loss
-            loss = None
+            loss = torch.nn.functional.mse_loss(out['feature'], rgb_gt)
 
             # Take the training step.
             optimizer.zero_grad()
