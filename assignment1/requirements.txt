@@ -11,3 +11,5 @@ conda install -c fvcore -c iopath -c conda-forge fvcore iopath
 pip install scikit-image matplotlib imageio plotly opencv-python
 pip install black usort flake8 flake8-bugbear flake8-comprehensions
 pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py310_cu117_pyt200/download.html
+
+conda install -n pytorch3d_updated ipykernel --update-deps --force-reinstall
